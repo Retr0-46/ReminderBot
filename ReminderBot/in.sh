@@ -1,1 +1,0 @@
-docker container exec -it retr0notes-container  "/bin/bash"
