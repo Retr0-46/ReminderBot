@@ -6,7 +6,8 @@ COPY ./requirements.txt /workspace/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r /workspace/requirements.txt
 
-RUN apt update && apt install ffmpeg libavcodec-extra -y
+RUN apt update
+RUN apt install ffmpeg libavcodec-extra flac -y
 
 COPY ./cache /workspace/cache
 COPY ./client /workspace/client
