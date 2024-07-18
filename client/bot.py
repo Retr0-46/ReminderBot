@@ -226,8 +226,17 @@ async def mainHandler(message: types.Message):
     await recognizerHandler(userInfo)
 
 
+async def checkNowTasks():
+    pass
+
+
 async def main():
     await dp.start_polling(bot)
 
+ioloop = asyncio.get_event_loop()
+tasks = [ioloop.create_task(main()),
+         ioloop.create_task(checkNowTasks())]
+
 if __name__ == '__main__':
-    asyncio.run(main())
+    ioloop.run_until_complete(asyncio.wait(tasks))
+    ioloop.close()
