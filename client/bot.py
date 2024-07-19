@@ -86,6 +86,7 @@ async def detailsCallback(callback: types.CallbackQuery):
     userInfo = CallbackUserInfo(callback)
     moreDetailsKeyboard = getMoreDetailsKeyboard(userInfo)
     await callback.message.answer(text=getTranslation(userInfo, 'about.message.2'), reply_markup=moreDetailsKeyboard)
+
 @dp.callback_query(F.data == const.callback.demotivator)
 async def aboutDemotivatorCallback(callback: types.CallbackQuery):
     userInfo = CallbackUserInfo(callback)
@@ -142,8 +143,8 @@ async def recognizerHandler(userInfo):
     except:
         await bot.send_message(userInfo.userId, getTranslation(userInfo, 'todo.denied.recognize'))
         return
-
-    if currentDate > datetime.datetime(currentDate.year, month, day, hour, minutes):
+    taskDate = datetime.datetime(currentDate.year, month, day, hour, minutes)
+    if currentDate > taskDate:
         await bot.send_message(userInfo.userId, getTranslation(userInfo, 'todo.denied.past'))
     elif dbTasks.isTaskExists(userInfo.userId, detectedTask):
         dbLocal.setLastDetectedTask(userInfo.userId, detectedTask)
@@ -226,17 +227,30 @@ async def mainHandler(message: types.Message):
     await recognizerHandler(userInfo)
 
 
-async def checkNowTasks():
-    pass
+async def mainCheckTasks():
+    while True:
+        currentDate = datetime.datetime.now()
+        userIds = dbTasks.getUserIds()
+        for userId in userIds:
+            userTasks = dbTasks.getTasksByUser(userId)
+            for task in userTasks:
+                day, month = map(int, task.date.split('.'))
+                hour, minutes = map(int, task.time.split(':'))
+                taskTime = datetime.datetime(currentDate.year, month, day, hour, minutes)
+                if currentDate > taskTime:
+                    await bot.send_message(userId, f'Сегодня в {task.time} вы запланировали:\n{task.name}')
+                    dbTasks.removeTask(userId, task.name)
+        await asyncio.sleep(5)
 
-
-async def main():
+async def mainTelegram():
     await dp.start_polling(bot)
 
-ioloop = asyncio.get_event_loop()
-tasks = [ioloop.create_task(main()),
-         ioloop.create_task(checkNowTasks())]
-
-if __name__ == '__main__':
+def main():
+    ioloop = asyncio.get_event_loop()
+    tasks = [ioloop.create_task(mainTelegram()),
+             ioloop.create_task(mainCheckTasks())]
     ioloop.run_until_complete(asyncio.wait(tasks))
     ioloop.close()
+
+if __name__ == '__main__':
+    main()

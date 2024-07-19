@@ -52,6 +52,11 @@ class dbLocalWorker():
         return self.db[str(userId)]['lastDetectedTask']
 
 class dbUsersWorker(dbWorker):
+    def getUserIds(self):
+        dbData = self.get()
+        userIds = tuple(dbData['users'].keys())
+        return userIds
+
     def isUserExists(self, userId):
         dbData = self.get()
         return str(userId) in dbData['users']
@@ -76,6 +81,11 @@ class dbUsersWorker(dbWorker):
         return permissions
 
 class dbTasksWorker(dbWorker):
+    def getUserIds(self):
+        dbData = self.get()
+        userIds = tuple(dbData.keys())
+        return userIds
+
     def isUserExists(self, userId):
         dbData = self.get()
         return str(userId) in dbData
