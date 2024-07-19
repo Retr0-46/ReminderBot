@@ -22,7 +22,7 @@ class Calendar:
                           self.august, self.september, self.october, self.november, self.december]
 
     def getMonthByNumber(self, number):
-        return self.monthList[number]
+        return self.monthList[number - 1]
 
     def getMonthByName(self, name):
         for month in self.monthList:

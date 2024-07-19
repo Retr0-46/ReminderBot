@@ -111,12 +111,12 @@ class dbTasksWorker(dbWorker):
         dbData[str(userId)].append(dictTask)
         self.save(dbData)
 
-    def removeTask(self, userId, name):
+    def removeTask(self, userId, task: Task):
         dbData = self.get()
         userTasks = dbData[str(userId)]
         needIndex = -1
         for index, dictTask in enumerate(userTasks):
-            if dictTask['name'] == name:
+            if dictTask['date'] == task.date and dictTask['time'] == task.time and dictTask['name'] == task.name:
                 needIndex = index
                 break
         if needIndex != -1: dbData[str(userId)].pop(needIndex)

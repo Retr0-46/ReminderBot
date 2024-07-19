@@ -1,6 +1,4 @@
 {
-    "users": {
-    },
     "permissions": {
         "0": "default",
         "1": "admin"

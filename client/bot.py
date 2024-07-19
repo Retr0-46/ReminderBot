@@ -10,6 +10,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
 from aiogram import F
+import pytz
 
 from utils.const import ConstObject
 from utils.funcs import joinPath, getConfigObject, getLogFileName
@@ -22,8 +23,9 @@ from utils.task.main import getDetectedTask
 const = ConstObject()
 botConfig = getConfigObject(joinPath(const.path.config, const.file.config))
 const.addConstFromConfig(botConfig)
-# logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level=logging.INFO, filename=joinPath(const.path.logs, getLogFileName()), filemode='w', format=const.logging.format)
+timezone = pytz.timezone(const.data.timezone)
+logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO, filename=joinPath(const.path.logs, getLogFileName()), filemode='w', format=const.logging.format)
 dbUsers = dbUsersWorker(joinPath(const.path.users, const.file.database))
 dbTasks = dbTasksWorker(joinPath(const.path.tasks, const.file.database))
 dbLocal = dbLocalWorker()
@@ -55,7 +57,7 @@ def getUserInfo(message):
         dbLocal.addNewUser(userInfo.userId)
     userLogInfo = f'{userInfo} | {dbLocal.db[str(userInfo.userId)]}'
     logging.info(userLogInfo)
-    print(userLogInfo)
+    # print(userLogInfo)
     return userInfo
 
 @dp.message(Command('start'))
@@ -136,14 +138,15 @@ def getListTasksKeyboard(userInfo):
 async def recognizerHandler(userInfo):
     recognizedText = dbLocal.getLastRecognizedText(userInfo.userId)
     try:
-        detectedTask = getDetectedTask(recognizedText)
-        currentDate = datetime.datetime.now()
+        detectedTask = getDetectedTask(recognizedText, timezone)
+        currentDate = datetime.datetime.now(timezone)
         day, month = map(int, detectedTask.date.split('.'))
         hour, minutes = map(int, detectedTask.time.split(':'))
     except:
         await bot.send_message(userInfo.userId, getTranslation(userInfo, 'todo.denied.recognize'))
         return
     taskDate = datetime.datetime(currentDate.year, month, day, hour, minutes)
+    taskDate = timezone.localize(taskDate)
     if currentDate > taskDate:
         await bot.send_message(userInfo.userId, getTranslation(userInfo, 'todo.denied.past'))
     elif dbTasks.isTaskExists(userInfo.userId, detectedTask):
@@ -187,7 +190,7 @@ async def replaceTaskYesCallback(callback: types.CallbackQuery):
     detectedTask = dbLocal.getLastDetectedTask(userInfo.userId)
     existingTask = dbTasks.getTaskByDate(userInfo.userId, detectedTask.date, detectedTask.time)
     dbLocal.setLastDetectedTask(userInfo.userId, None)
-    dbTasks.removeTask(userInfo.userId, existingTask.name)
+    dbTasks.removeTask(userInfo.userId, existingTask)
     dbTasks.addNewTask(userInfo.userId, detectedTask.date, detectedTask.time, detectedTask.name)
     listTasksKeyboard = getListTasksKeyboard(userInfo)
     await callback.message.answer(getTranslation(userInfo, 'tasks.replace', [existingTask.name, detectedTask.name]), reply_markup=listTasksKeyboard)
@@ -229,7 +232,7 @@ async def mainHandler(message: types.Message):
 
 async def mainCheckTasks():
     while True:
-        currentDate = datetime.datetime.now()
+        currentDate = datetime.datetime.now(timezone)
         userIds = dbTasks.getUserIds()
         for userId in userIds:
             userTasks = dbTasks.getTasksByUser(userId)
@@ -237,9 +240,10 @@ async def mainCheckTasks():
                 day, month = map(int, task.date.split('.'))
                 hour, minutes = map(int, task.time.split(':'))
                 taskTime = datetime.datetime(currentDate.year, month, day, hour, minutes)
+                taskTime = timezone.localize(taskTime)
                 if currentDate > taskTime:
                     await bot.send_message(userId, f'Сегодня в {task.time} вы запланировали:\n{task.name}')
-                    dbTasks.removeTask(userId, task.name)
+                    dbTasks.removeTask(userId, task)
         await asyncio.sleep(5)
 
 async def mainTelegram():
